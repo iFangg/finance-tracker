@@ -69,23 +69,28 @@ variable_name = {
     3: "DATE (01/01/2001 | 1/1/2001 | Leave blank for today's date): ",
 }
 
-finance = Finance()
-for step in range(4):
-    variable = input(f"ENTER {variable_name[step]}")
-    while variable is None or len(variable) <= 0:
-        variable = input(f"ENTER {variable_name[step]}")
+while True:
+    try:
+        finance = Finance()
+        for step in range(4):
+            variable = input(f"ENTER {variable_name[step]}")
+            while variable is None or len(variable) <= 0:
+                variable = input(f"ENTER {variable_name[step]}")
 
-    match step:
-        case 0:
-            finance.setBusiness(variable)
-        case 1:
-            finance.setDescription(variable)
-        case 2:
-            finance.setAmount(round(float(variable), 2))
-        case 3:
-            finance.setDate((datetime.strptime(variable, "%d/%m/%Y") if variable else datetime.now()).strftime("%d/%m/%Y"))
+            match step:
+                case 0:
+                    finance.setBusiness(variable)
+                case 1:
+                    finance.setDescription(variable)
+                case 2:
+                    finance.setAmount(round(float(variable), 2))
+                case 3:
+                    finance.setDate((datetime.strptime(variable, "%d/%m/%Y") if variable else datetime.now()).strftime("%d/%m/%Y"))
 
-finance.print()
+        finance.print()
+    except EOFError:
+        print("Exiting...")
+        break
     
 # with open(monthly_csv, "a") as f_monthly, open(yearly_csv, "a") as f_yearly:
 #     monthly_writer = csv.writer(f_monthly, quotechar='|', quoting=csv.QUOTE_MINIMAL)
