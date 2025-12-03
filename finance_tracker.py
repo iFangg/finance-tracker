@@ -1,15 +1,29 @@
-import requests
-import csv
-from datetime import datetime, date
 import os
-import typing
+import csv
+import json
+from datetime import datetime, date
+
+def path_exists(path, content = ""):
+    if not os.path.exists(path):
+        with open(path, "w", encoding='utf-8') as f:
+            f.write(content)
+    
+            return f.read()
+
+saved_dir = "Saved_Finances"
+os.makedirs(saved_dir, exist_ok=True)
+
+# todo: Figure out a way to track multiple bills/finance objects under the same business
+saved_json = path_exists(f"{saved_dir}/saved.json")
+saved_aliases = path_exists(f"{saved_dir}/aliases.json")
+
 
 now = datetime.today()
 currentYear = now.year
 currentMonth = now.month
 
 # Create yearly csv
-def createYearlyCsv(year = currentYear):
+def create_yearly_csv(year = currentYear):
     yearly_csv = f'./{year}/overview-{year}.csv'
     if not os.path.exists(f"./{year}"):
         os.mkdir(f"{year}")
@@ -23,7 +37,7 @@ def createYearlyCsv(year = currentYear):
 
 
 # Create monthly csv
-def createMonthlyCsv(month = currentMonth, year = currentYear):
+def create_monthly_csv(month = currentMonth, year = currentYear):
     monthly_csv = f"./{year}/{month}-{year}.csv"
     if not os.path.exists(monthly_csv):
         with open(monthly_csv, "w") as f:
@@ -34,21 +48,23 @@ def createMonthlyCsv(month = currentMonth, year = currentYear):
     
     return monthly_csv
 
-createYearlyCsv()
-createMonthlyCsv()
+create_yearly_csv()
+create_monthly_csv()
 
 
 # Update csvs
-def updateCsvs(finance, month = currentMonth, year = currentYear):
-    currentMonthCsv = createMonthlyCsv(month, year)
-    currentYearCsv = createYearlyCsv(year)
+def update_csvs(finance, month = currentMonth, year = currentYear):
+    current_month_csv = create_monthly_csv(month, year)
+    current_year_csv = create_yearly_csv(year)
 
-    with open(currentMonthCsv, "a") as f_monthly, open(currentYearCsv, "a") as f_yearly:
+    with open(current_month_csv, "a") as f_monthly, open(current_year_csv, "a") as f_yearly:
         monthly_writer = csv.writer(f_monthly, quotechar='|', quoting=csv.QUOTE_MINIMAL)
         yearly_writer = csv.writer(f_yearly, quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
-        monthly_writer.writerow([finance.getBusiness()] + [finance.getDescription()] + [finance.getAmount()] + [finance.getDate()])
-        yearly_writer.writerow([finance.getBusiness()] + [finance.getDescription()] + [finance.getAmount()] + [finance.getDate()])
+        finance_data = [finance.get_business()] + [finance.get_description()] + [finance.get_amount()] + [finance.get_date()]
+
+        monthly_writer.writerow(finance_data)
+        yearly_writer.writerow(finance_data)
 
 
 # Update sheets
@@ -60,36 +76,36 @@ class Finance:
         self.amount = float(0)
         self.date = datetime.now()
 
-    def getBusiness(self):
+    def get_business(self):
         return self.business
 
-    def getDescription(self):
+    def get_description(self):
         return self.description
 
-    def getAmount(self):
+    def get_amount(self):
         return '{0:.2f}'.format(self.amount)
     
-    def getDate(self):
+    def get_date(self):
         return self.date
 
-    def getSplitDate(self):
+    def get_splitdate(self):
         # formatted by DAY - MONTH - YEAR
         # splitDate = self.date.split('/')
         return self.date.split('/')
     
-    def setBusiness(self, business):
+    def set_business(self, business):
         assert isinstance(business, str), f"Business variable must be a string, got {type(business).__name__}"
         self.business = business
     
-    def setDescription(self, description):
+    def set_description(self, description):
         assert isinstance(description, str), f"Description variable must be a string, got {type(description).__name__}"
         self.description = description
     
-    def setAmount(self, amount):
+    def set_amount(self, amount):
         assert isinstance(amount, float), f"Amount variable must be a number (float), got {type(amount).__name__}"
         self.amount = amount
     
-    def setDate(self, set_date):
+    def set_date(self, set_date):
         assert isinstance(set_date, str), f"Date variable must be a string, got {type(set_date).__name__}"
         self.date = set_date
     
@@ -124,26 +140,37 @@ while True:
 
             match step:
                 case Steps.BUSINESS:
-                    finance.setBusiness(variable if variable else "NOT PROVIDED")
+                    finance.set_business(variable if variable else "NOT PROVIDED")
                 case Steps.DESCRIPTION:
-                    finance.setDescription(variable if variable else "NO DESCRIPTION PROVIDED")
+                    finance.set_description(variable if variable else "NO DESCRIPTION PROVIDED")
                 case Steps.AMOUNT:
-                    finance.setAmount(round(float(variable), 2) if variable else float(0))
+                    finance.set_amount(round(float(variable), 2) if variable else float(0))
                 case Steps.DATE:
                     date = variable
                     splitInput = variable.split("/")
-                    if variable is None or len(variable) <= 0:
+                    if len(variable) <= 0:
                         date = datetime.now()
 
                     elif len(splitInput) == 2 or len(splitInput[2]) <= 0:
                         date = datetime.strptime(f'{splitInput[0]}/{splitInput[1]}/{currentYear}', "%d/%m/%Y")
 
-                    finance.setDate(date.strftime("%d/%m/%Y"))
+                    finance.set_date(date.strftime("%d/%m/%Y"))
 
-        financeDate = finance.getSplitDate()
+        financeDate = finance.get_splitdate()
         finance.print()
         
-        updateCsvs(finance, financeDate[1], financeDate[2])
+        update_csvs(finance, financeDate[1], financeDate[2])
+
+        saveAsRecurring = input("Do you wish to save this as a recurring finance? y/N (No by default) ")
+        saveAsRecurring = True if saveAsRecurring == "y" else False
+
+        if saveAsRecurring:
+            finance_name = finance.get_business()
+
+            with open("Saved_Finances/saved.json", "a+", encoding='utf-8') as f:
+                print(json.dumps({f"{finance_name}-{0}"}))
+
+            aliasesToSave = input("Enter aliases (separated by spaces) that this recurring payment can be saved under: ").split(" ")
 
 
     except EOFError:
