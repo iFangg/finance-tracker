@@ -118,6 +118,7 @@ class Steps:
 while True:
     try:
         finance = Finance()
+        # implement flags and saving of recurring payments
         for step in range(4):
             variable = input(f"ENTER {variable_name[step]}")
 
