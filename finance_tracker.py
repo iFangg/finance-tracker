@@ -3,19 +3,23 @@ import csv
 import json
 from datetime import datetime, date
 
-def path_exists(path, content = ""):
+def path_exists(path, is_json = False, content = ""):
+    file_content = ""
     if not os.path.exists(path):
         with open(path, "w", encoding='utf-8') as f:
             f.write(content)
     
-            return f.read()
+            file_content = f.read()
+            return json.loads(file_content) if is_json else file_content
 
 saved_dir = "Saved_Finances"
 os.makedirs(saved_dir, exist_ok=True)
 
 # todo: Figure out a way to track multiple bills/finance objects under the same business
-saved_json = path_exists(f"{saved_dir}/saved.json")
-saved_aliases = path_exists(f"{saved_dir}/aliases.json")
+saved_json = path_exists(f"{saved_dir}/saved.json", True)
+print(f"saved json: {saved_json}")
+saved_aliases = path_exists(f"{saved_dir}/aliases.json", True)
+print(f"saved aliases: {saved_aliases}")
 
 
 now = datetime.today()
@@ -167,8 +171,28 @@ while True:
         if saveAsRecurring:
             finance_name = finance.get_business()
 
+            print(
+                json.dumps({
+                    f"{finance_name}": {
+                        0: {
+                            "Description": finance.get_description(),
+                            "Amount": finance.get_amount(),
+                        }
+                    }
+                })
+            )
+            if finance_name not in dict.keys(saved_json):
+                saved_json.append({
+                    finance_name: [
+                        {
+                            "Description": finance.get_description(),
+                            "Amount": finance.get_amount()
+                        }
+                    ]
+                })
+
             with open("Saved_Finances/saved.json", "a+", encoding='utf-8') as f:
-                print(json.dumps({f"{finance_name}-{0}"}))
+                print()
 
             aliasesToSave = input("Enter aliases (separated by spaces) that this recurring payment can be saved under: ").split(" ")
 
