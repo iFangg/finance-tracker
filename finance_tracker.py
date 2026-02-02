@@ -35,20 +35,18 @@ def create_yearly_csv(year = currentYear):
             writer = csv.writer(f, quotechar='|', quoting=csv.QUOTE_MINIMAL)
             writer.writerow([year] + [''] + ["Finances"])
             writer.writerow(["Description"] + ["Amount"] + ["Date"] + ["Reference"] + ["Transaction ID"])
-            print(f)
     
     return yearly_csv
 
 
 # Create monthly csv
 def create_monthly_csv(month = currentMonth, year = currentYear):
-    monthly_csv = f"./{year}/{month}-{year}.csv"
+    monthly_csv = f"./{year}/{f"0{month}" if int(month) < 10 and len(month) < 2 else month}-{year}.csv"
     if not os.path.exists(monthly_csv):
         with open(monthly_csv, "w") as f:
             writer = csv.writer(f, quotechar='|', quoting=csv.QUOTE_MINIMAL)
             writer.writerow([year] + [month] + ["Finances"])
             writer.writerow(["Business"] + ["Description"] + ["Amount"] + ["Date"])
-            print(f)
     
     return monthly_csv
 
@@ -144,20 +142,39 @@ while True:
 
             match step:
                 case Steps.BUSINESS:
+                    words = variable.split(" ")
+                    if words[0].startswith("--") or words[-1].startswith("--"):
+                        print("FINDING SAVED FINANCE...")
+                        step = Steps.DATE
+                        continue
+
                     finance.set_business(variable if variable else "NOT PROVIDED")
                 case Steps.DESCRIPTION:
                     finance.set_description(variable if variable else "NO DESCRIPTION PROVIDED")
                 case Steps.AMOUNT:
                     finance.set_amount(round(float(variable), 2) if variable else float(0))
                 case Steps.DATE:
-                    date = variable
-                    splitInput = variable.split("/")
-                    if len(variable) <= 0:
-                        date = datetime.now()
+                    date = datetime.now()
 
-                    elif len(splitInput) == 2 or len(splitInput[2]) <= 0:
-                        date = datetime.strptime(f'{splitInput[0]}/{splitInput[1]}/{currentYear}', "%d/%m/%Y")
+                    if len(variable) > 0:
+                        splitInput = variable.split("/")
+                        maxInputLen = 3
 
+                        for i in range(maxInputLen):
+                            timeLen = len(splitInput[i]) if len(splitInput) < i else 0
+                            if i == 2:
+                                if len(splitInput) <= 2:
+                                    splitInput.append(currentYear)
+                                else:
+                                    splitInput[i] = f'20{splitInput[i]}' if timeLen == 2 else splitInput[i]
+                            else:
+                                splitInput[i] = f'0{splitInput[i]}' if timeLen == 1 else splitInput[i]
+
+                        date = datetime.strptime(
+                            f'{splitInput[0]}/{splitInput[1]}/{splitInput[2]}',
+                            "%d/%m/%Y")
+
+                    # print(date)
                     finance.set_date(date.strftime("%d/%m/%Y"))
 
         financeDate = finance.get_splitdate()
@@ -166,9 +183,8 @@ while True:
         update_csvs(finance, financeDate[1], financeDate[2])
 
         saveAsRecurring = input("Do you wish to save this as a recurring finance? y/N (No by default) ")
-        saveAsRecurring = True if saveAsRecurring == "y" else False
 
-        if saveAsRecurring:
+        if saveAsRecurring.lower() == "y":
             finance_name = finance.get_business()
 
             print(
